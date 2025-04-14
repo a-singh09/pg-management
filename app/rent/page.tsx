@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { rents, tenants, pgs } from "@/lib/data"
-import { Download, Mail, Plus, Search } from "lucide-react"
+import { Download, Mail, MessageCirclePlus, Plus, Search } from "lucide-react"
 import { format } from "date-fns"
 import { RentForm } from "@/components/forms/rent-form"
 import { useToast } from "@/components/ui/use-toast"
@@ -74,11 +74,10 @@ export default function RentPage() {
     })
   }
 
-  const handleSendReceipt = (rent: any) => {
-    // In a real app, you would generate and email a receipt
+  const handleSendMessage = (rent: any) => {
     toast({
-      title: "Receipt Sent",
-      description: "The rent receipt has been emailed to the tenant.",
+      title: "Opening Whatsapp",
+      description: "Send the rent reminder to the tenant's WhatsApp.",
     })
   }
 
@@ -191,9 +190,9 @@ export default function RentPage() {
                               Mark as Paid
                             </Button>
                           ) : (
-                            <Button variant="outline" size="sm" onClick={() => handleSendReceipt(rent)}>
-                              <Mail className="mr-1 h-3 w-3" />
-                              Receipt
+                            <Button variant="outline" size="sm" onClick={() => handleSendMessage(rent)}>
+                              <MessageCirclePlus className="mr-1 h-3 w-3" />
+                              Send Reminder
                             </Button>
                           )}
                           <Button variant="ghost" size="sm" onClick={() => handleEditClick(rent)}>

@@ -35,11 +35,11 @@
     --radius: 0.5rem;
 
     /* Chart colors */
-    --chart-1: 0 0% 0%;
-    --chart-2: 0 0% 20%;
-    --chart-3: 0 0% 40%;
-    --chart-4: 0 0% 60%;
-    --chart-5: 0 0% 80%;
+    --chart-1: 12 76% 61%;    /* Soft red-orange */
+    --chart-2: 200 70% 45%;   /* Medium blue */
+    --chart-3: 150 55% 40%;   /* Muted green */
+    --chart-4: 280 55% 55%;   /* Soft purple */
+    --chart-5: 40 80% 60%;    /* Soft gold */
 
     /* Sidebar colors */
     --sidebar-background: 0 0% 98%;
