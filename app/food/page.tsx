@@ -1,61 +1,258 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { foodRegister, pgs } from "@/lib/data"
-import { Plus, Search } from "lucide-react"
-import { FoodForm } from "@/components/forms/food-form"
-import { useToast } from "@/components/ui/use-toast"
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Plus, Search, AlertCircle } from "lucide-react";
+import { FoodForm } from "@/components/forms/food-form";
+import { useToast } from "@/components/ui/use-toast";
+import { foodService, propertyService } from "@/lib/services";
+import {
+  Food,
+  Property,
+  FoodAnalytics,
+  KitchenInsights,
+} from "@/lib/transformers";
 
 export default function FoodPage() {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [propertyFilter, setPropertyFilter] = useState("")
-  const [dateFilter, setDateFilter] = useState("")
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [isViewModalOpen, setIsViewModalOpen] = useState(false)
-  const [selectedFood, setSelectedFood] = useState<any>(null)
-  const { toast } = useToast()
+  const [searchTerm, setSearchTerm] = useState("");
+  const [propertyFilter, setPropertyFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [selectedFood, setSelectedFood] = useState<Food | null>(null);
+  const [foodEntries, setFoodEntries] = useState<Food[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [analytics, setAnalytics] = useState<FoodAnalytics | null>(null);
+  const [insights, setInsights] = useState<KitchenInsights | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
-  const filteredFood = foodRegister.filter((entry) => {
-    const matchesSearch = entry.menu.some((item) => item.toLowerCase().includes(searchTerm.toLowerCase()))
-    const matchesProperty = propertyFilter === "" || entry.pg_id === propertyFilter
-    const matchesDate = dateFilter === "" || entry.date === dateFilter
-    return matchesSearch && matchesProperty && matchesDate
-  })
+  // Load data on component mount
+  useEffect(() => {
+    loadData();
+  }, []);
 
-  const handleAddFood = (data: any) => {
-    // In a real app, you would call an API to add the food entry
-    console.log("Adding food entry:", data)
-    toast({
-      title: "Food Entry Added",
-      description: `Food entry for ${data.date} has been added successfully.`,
-    })
-    setIsAddModalOpen(false)
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Load properties and food entries in parallel
+      const [propertiesData, foodData] = await Promise.all([
+        propertyService.getProperties(),
+        foodService.getFoodEntries(),
+      ]);
+
+      setProperties(propertiesData);
+      setFoodEntries(foodData);
+
+      // Load analytics and insights
+      try {
+        const [analyticsData, insightsData] = await Promise.all([
+          foodService.getFoodAnalytics(),
+          foodService.getKitchenInsights(),
+        ]);
+        setAnalytics(analyticsData);
+        setInsights(insightsData);
+      } catch (analyticsError) {
+        // Analytics are optional, don't fail the whole page
+        console.warn("Failed to load food analytics:", analyticsError);
+      }
+    } catch (err: any) {
+      console.error("Failed to load food data:", err);
+      setError(err.message || "Failed to load food data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredFood = foodEntries.filter((entry) => {
+    const matchesSearch =
+      entry.menu_items?.some((item) =>
+        item.toLowerCase().includes(searchTerm.toLowerCase()),
+      ) || false;
+    const matchesProperty =
+      propertyFilter === "" || entry.pg_id === propertyFilter;
+    const matchesDate = dateFilter === "" || entry.date === dateFilter;
+    return matchesSearch && matchesProperty && matchesDate;
+  });
+
+  const handleAddFood = async (data: any) => {
+    try {
+      const newFood = await foodService.createFoodEntry(data);
+      setFoodEntries((prev) => [...prev, newFood]);
+      toast({
+        title: "Food Entry Added",
+        description: `Food entry for ${data.date} has been added successfully.`,
+      });
+      setIsAddModalOpen(false);
+      // Refresh analytics
+      try {
+        const [analyticsData, insightsData] = await Promise.all([
+          foodService.getFoodAnalytics(),
+          foodService.getKitchenInsights(),
+        ]);
+        setAnalytics(analyticsData);
+        setInsights(insightsData);
+      } catch (analyticsError) {
+        console.warn("Failed to refresh analytics:", analyticsError);
+      }
+    } catch (error: any) {
+      console.error("Failed to add food entry:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add food entry",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEditFood = async (data: any) => {
+    if (!selectedFood) return;
+
+    try {
+      const updatedFood = await foodService.updateFoodEntry(
+        selectedFood.id,
+        data,
+      );
+      setFoodEntries((prev) =>
+        prev.map((food) => (food.id === selectedFood.id ? updatedFood : food)),
+      );
+      toast({
+        title: "Food Entry Updated",
+        description: `Food entry for ${data.date} has been updated successfully.`,
+      });
+      setIsEditModalOpen(false);
+      setSelectedFood(null);
+      // Refresh analytics
+      try {
+        const [analyticsData, insightsData] = await Promise.all([
+          foodService.getFoodAnalytics(),
+          foodService.getKitchenInsights(),
+        ]);
+        setAnalytics(analyticsData);
+        setInsights(insightsData);
+      } catch (analyticsError) {
+        console.warn("Failed to refresh analytics:", analyticsError);
+      }
+    } catch (error: any) {
+      console.error("Failed to update food entry:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update food entry",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteFood = async (foodId: string) => {
+    try {
+      await foodService.deleteFoodEntry(foodId);
+      setFoodEntries((prev) => prev.filter((food) => food.id !== foodId));
+      toast({
+        title: "Food Entry Deleted",
+        description: "Food entry has been deleted successfully.",
+      });
+      // Refresh analytics
+      try {
+        const [analyticsData, insightsData] = await Promise.all([
+          foodService.getFoodAnalytics(),
+          foodService.getKitchenInsights(),
+        ]);
+        setAnalytics(analyticsData);
+        setInsights(insightsData);
+      } catch (analyticsError) {
+        console.warn("Failed to refresh analytics:", analyticsError);
+      }
+    } catch (error: any) {
+      console.error("Failed to delete food entry:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete food entry",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleViewFood = (entry: Food) => {
+    setSelectedFood(entry);
+    setIsViewModalOpen(true);
+  };
+
+  const handleEditClick = (entry: Food) => {
+    setSelectedFood(entry);
+    setIsEditModalOpen(true);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col">
+        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-3xl font-bold tracking-tight">Food Register</h2>
+            <Skeleton className="h-10 w-32" />
+          </div>
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-64" />
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex gap-4">
+                  <Skeleton className="h-10 flex-1" />
+                  <Skeleton className="h-10 w-32" />
+                  <Skeleton className="h-10 w-32" />
+                </div>
+                <div className="space-y-2">
+                  {[...Array(5)].map((_, i) => (
+                    <Skeleton key={i} className="h-12 w-full" />
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
   }
 
-  const handleEditFood = (data: any) => {
-    // In a real app, you would call an API to update the food entry
-    console.log("Editing food entry:", data)
-    toast({
-      title: "Food Entry Updated",
-      description: `Food entry for ${data.date} has been updated successfully.`,
-    })
-    setIsEditModalOpen(false)
-  }
-
-  const handleViewFood = (entry: any) => {
-    setSelectedFood(entry)
-    setIsViewModalOpen(true)
-  }
-
-  const handleEditClick = (entry: any) => {
-    setSelectedFood(entry)
-    setIsEditModalOpen(true)
+  if (error) {
+    return (
+      <div className="flex flex-col">
+        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-3xl font-bold tracking-tight">Food Register</h2>
+            <Button onClick={loadData}>Retry</Button>
+          </div>
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -92,9 +289,9 @@ export default function FoodPage() {
                 onChange={(e) => setPropertyFilter(e.target.value)}
               >
                 <option value="">All Properties</option>
-                {pgs.map((pg) => (
-                  <option key={pg.id} value={pg.id}>
-                    {pg.name}
+                {properties.map((property) => (
+                  <option key={property.id} value={property.id}>
+                    {property.name}
                   </option>
                 ))}
               </select>
@@ -119,15 +316,19 @@ export default function FoodPage() {
                 </TableHeader>
                 <TableBody>
                   {filteredFood.map((entry) => {
-                    const property = pgs.find((pg) => pg.id === entry.pg_id)
+                    const property = properties.find(
+                      (prop) => prop.id === entry.pg_id,
+                    );
                     return (
                       <TableRow key={entry.id}>
-                        <TableCell className="font-medium">{entry.date}</TableCell>
+                        <TableCell className="font-medium">
+                          {entry.date}
+                        </TableCell>
                         <TableCell>{property?.name || "Unknown"}</TableCell>
                         <TableCell>{entry.meals_served}</TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
-                            {entry.menu.map((item) => (
+                            {entry.menu_items?.map((item) => (
                               <Badge key={item} variant="outline">
                                 {item}
                               </Badge>
@@ -135,15 +336,30 @@ export default function FoodPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="sm" onClick={() => handleEditClick(entry)}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditClick(entry)}
+                          >
                             Edit
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleViewFood(entry)}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleViewFood(entry)}
+                          >
                             View Details
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteFood(entry.id)}
+                          >
+                            Delete
                           </Button>
                         </TableCell>
                       </TableRow>
-                    )
+                    );
                   })}
                 </TableBody>
               </Table>
@@ -152,43 +368,113 @@ export default function FoodPage() {
             <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Total Meals</CardTitle>
+                  <CardTitle className="text-sm font-medium">
+                    Total Meals
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {filteredFood.reduce((sum, entry) => sum + entry.meals_served, 0)}
+                    {analytics?.totalMeals ||
+                      filteredFood.reduce(
+                        (sum, entry) => sum + entry.meals_served,
+                        0,
+                      )}
                   </div>
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Average Meals/Day</CardTitle>
+                  <CardTitle className="text-sm font-medium">
+                    Average Meals/Day
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {filteredFood.length > 0
-                      ? Math.round(
-                          filteredFood.reduce((sum, entry) => sum + entry.meals_served, 0) / filteredFood.length,
-                        )
-                      : 0}
+                    {analytics?.averageMealsPerDay ||
+                      (filteredFood.length > 0
+                        ? Math.round(
+                            filteredFood.reduce(
+                              (sum, entry) => sum + entry.meals_served,
+                              0,
+                            ) / filteredFood.length,
+                          )
+                        : 0)}
                   </div>
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Most Popular Item</CardTitle>
+                  <CardTitle className="text-sm font-medium">
+                    Most Popular Item
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">Rice</div>
+                  <div className="text-2xl font-bold">
+                    {analytics?.mostPopularItems?.[0]?.item || "N/A"}
+                  </div>
                 </CardContent>
               </Card>
             </div>
+
+            {/* Kitchen Insights Section */}
+            {insights && (
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold mb-4">Kitchen Insights</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">
+                        Recommendations
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-2">
+                        {insights.recommendations.map((rec, index) => (
+                          <li
+                            key={index}
+                            className="text-sm text-muted-foreground"
+                          >
+                            • {rec}
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">
+                        Cost Optimization
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-2">
+                        {insights.costOptimization.map((opt, index) => (
+                          <li key={index} className="text-sm">
+                            <span className="text-muted-foreground">
+                              • {opt.suggestion}
+                            </span>
+                            <span className="text-green-600 font-medium ml-2">
+                              Save ₹{opt.potentialSaving}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
 
       {/* Add Food Modal */}
-      <FoodForm isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onSubmit={handleAddFood} />
+      <FoodForm
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSubmit={handleAddFood}
+        properties={properties}
+      />
 
       {/* Edit Food Modal */}
       {selectedFood && (
@@ -197,6 +483,7 @@ export default function FoodPage() {
           onClose={() => setIsEditModalOpen(false)}
           initialData={selectedFood}
           onSubmit={handleEditFood}
+          properties={properties}
         />
       )}
 
@@ -207,8 +494,9 @@ export default function FoodPage() {
           onClose={() => setIsViewModalOpen(false)}
           initialData={selectedFood}
           onSubmit={() => setIsViewModalOpen(false)}
+          properties={properties}
         />
       )}
     </div>
-  )
+  );
 }

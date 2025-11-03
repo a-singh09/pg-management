@@ -1,42 +1,49 @@
-"use client"
+"use client";
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { ModalForm } from "@/components/modals/modal-form"
-import { Badge } from "@/components/ui/badge"
-import { X } from "lucide-react"
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ModalForm } from "@/components/modals/modal-form";
+import { Badge } from "@/components/ui/badge";
+import { X } from "lucide-react";
 
 interface PropertyFormProps {
-  isOpen: boolean
-  onClose: () => void
-  initialData?: any
-  onSubmit: (data: any) => void
+  isOpen: boolean;
+  onClose: () => void;
+  initialData?: any;
+  onSubmit: (data: any) => void;
 }
 
-export function PropertyForm({ isOpen, onClose, initialData, onSubmit }: PropertyFormProps) {
+export function PropertyForm({
+  isOpen,
+  onClose,
+  initialData,
+  onSubmit,
+}: PropertyFormProps) {
   const [formData, setFormData] = useState({
     name: initialData?.name || "",
     location: initialData?.location || "",
     owner: initialData?.owner || "",
     contact: initialData?.contact || "",
     total_rooms: initialData?.total_rooms || "",
-    available_beds: initialData?.available_beds || "",
+    beds_per_room: initialData?.beds_per_room || "2",
     rent_per_bed: initialData?.rent_per_bed || "",
     facilities: initialData?.facilities || [],
     newFacility: "",
-  })
+  });
 
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handleAddFacility = () => {
     if (formData.newFacility.trim()) {
@@ -44,28 +51,37 @@ export function PropertyForm({ isOpen, onClose, initialData, onSubmit }: Propert
         ...prev,
         facilities: [...prev.facilities, prev.newFacility.trim()],
         newFacility: "",
-      }))
+      }));
     }
-  }
+  };
 
   const handleRemoveFacility = (facility: string) => {
     setFormData((prev) => ({
       ...prev,
       facilities: prev.facilities.filter((f: string) => f !== facility),
-    }))
-  }
+    }));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
+    e.preventDefault();
+    const { newFacility, ...dataToSubmit } = formData;
 
-    // Simulate API call
-    setTimeout(() => {
-      const { newFacility, ...dataToSubmit } = formData
-      onSubmit(dataToSubmit)
-      setIsSubmitting(false)
-    }, 1000)
-  }
+    // Validate contact number
+    if (!/^[0-9]{10}$/.test(dataToSubmit.contact)) {
+      alert("Contact number must be exactly 10 digits");
+      return;
+    }
+
+    // Convert string numbers to actual numbers
+    const processedData = {
+      ...dataToSubmit,
+      total_rooms: parseInt(dataToSubmit.total_rooms) || 0,
+      beds_per_room: parseInt(dataToSubmit.beds_per_room) || 2,
+      rent_per_bed: parseInt(dataToSubmit.rent_per_bed) || 0,
+    };
+
+    onSubmit(processedData);
+  };
 
   return (
     <ModalForm
@@ -119,9 +135,12 @@ export function PropertyForm({ isOpen, onClose, initialData, onSubmit }: Propert
             <Input
               id="contact"
               name="contact"
+              type="tel"
               value={formData.contact}
               onChange={handleChange}
-              placeholder="Enter contact number"
+              placeholder="Enter 10-digit contact number"
+              pattern="[0-9]{10}"
+              maxLength={10}
               required
             />
           </div>
@@ -141,14 +160,16 @@ export function PropertyForm({ isOpen, onClose, initialData, onSubmit }: Propert
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="available_beds">Available Beds</Label>
+            <Label htmlFor="beds_per_room">Beds Per Room</Label>
             <Input
-              id="available_beds"
-              name="available_beds"
+              id="beds_per_room"
+              name="beds_per_room"
               type="number"
-              value={formData.available_beds}
+              value={formData.beds_per_room}
               onChange={handleChange}
-              placeholder="Enter available beds"
+              placeholder="Enter beds per room"
+              min="1"
+              max="10"
               required
             />
           </div>
@@ -170,7 +191,11 @@ export function PropertyForm({ isOpen, onClose, initialData, onSubmit }: Propert
           <Label>Facilities</Label>
           <div className="flex flex-wrap gap-2 mb-2">
             {formData.facilities.map((facility: string, index: number) => (
-              <Badge key={index} variant="secondary" className="flex items-center gap-1">
+              <Badge
+                key={index}
+                variant="secondary"
+                className="flex items-center gap-1"
+              >
                 {facility}
                 <button
                   type="button"
@@ -197,5 +222,5 @@ export function PropertyForm({ isOpen, onClose, initialData, onSubmit }: Propert
         </div>
       </div>
     </ModalForm>
-  )
+  );
 }

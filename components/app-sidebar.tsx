@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import {
   Building,
@@ -14,7 +14,9 @@ import {
   TrendingUp,
   Home,
   Menu,
-} from "lucide-react"
+  LogOut,
+  User,
+} from "lucide-react";
 
 import {
   Sidebar,
@@ -25,12 +27,26 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarTrigger,
-} from "@/components/ui/sidebar"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
+} from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { authService, User as UserType } from "@/lib/auth";
 
 export function AppSidebar() {
-  const pathname = usePathname()
+  const pathname = usePathname();
+  const [user, setUser] = useState<UserType | null>(null);
+
+  useEffect(() => {
+    const currentUser = authService.getCurrentUser();
+    setUser(currentUser);
+  }, []);
+
+  const handleLogout = () => {
+    authService.logout();
+  };
 
   const menuItems = [
     { name: "Dashboard", href: "/", icon: Home },
@@ -45,7 +61,7 @@ export function AppSidebar() {
     { name: "Issues", href: "/issues", icon: AlertCircle },
     { name: "Reports", href: "/reports", icon: BarChart3 },
     { name: "Profit/Loss", href: "/profit-loss", icon: TrendingUp },
-  ]
+  ];
 
   return (
     <Sidebar>
@@ -64,7 +80,11 @@ export function AppSidebar() {
         <SidebarMenu>
           {menuItems.map((item) => (
             <SidebarMenuItem key={item.name}>
-              <SidebarMenuButton asChild isActive={pathname === item.href} tooltip={item.name}>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname === item.href}
+                tooltip={item.name}
+              >
                 <Link href={item.href}>
                   <item.icon className="h-5 w-5" />
                   <span>{item.name}</span>
@@ -74,9 +94,41 @@ export function AppSidebar() {
           ))}
         </SidebarMenu>
       </SidebarContent>
-      <SidebarFooter className="border-t p-4">
-        <div className="text-xs text-muted-foreground">© {new Date().getFullYear()} PG Manager</div>
+      <SidebarFooter className="border-t p-4 space-y-4">
+        {user && (
+          <div className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
+            <Avatar className="h-8 w-8">
+              <AvatarFallback>
+                {user.name
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")
+                  .toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{user.name}</p>
+              <p className="text-xs text-muted-foreground truncate">
+                {user.userType === "tenant"
+                  ? `Tenant (${user.tenantCode})`
+                  : "Owner"}
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="h-8 w-8 p-0"
+              title="Logout"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+        <div className="text-xs text-muted-foreground">
+          © {new Date().getFullYear()} PG Manager
+        </div>
       </SidebarFooter>
     </Sidebar>
-  )
+  );
 }

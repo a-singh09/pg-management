@@ -1,52 +1,65 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { ModalForm } from "@/components/modals/modal-form"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { pgs } from "@/lib/data"
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { ModalForm } from "@/components/modals/modal-form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type { Property } from "@/lib/transformers";
 
 interface ExpenseFormProps {
-  isOpen: boolean
-  onClose: () => void
-  initialData?: any
-  onSubmit: (data: any) => void
+  isOpen: boolean;
+  onClose: () => void;
+  initialData?: any;
+  onSubmit: (data: any) => void;
+  properties?: Property[];
+  isSubmitting?: boolean;
 }
 
-export function ExpenseForm({ isOpen, onClose, initialData, onSubmit }: ExpenseFormProps) {
+export function ExpenseForm({
+  isOpen,
+  onClose,
+  initialData,
+  onSubmit,
+  properties = [],
+  isSubmitting = false,
+}: ExpenseFormProps) {
   const [formData, setFormData] = useState({
     pg_id: initialData?.pg_id || "",
     category: initialData?.category || "",
     description: initialData?.description || "",
     amount: initialData?.amount || "",
-    expense_date: initialData?.expense_date ? new Date(initialData.expense_date).toISOString().split("T")[0] : "",
-  })
+    expense_date: initialData?.expense_date
+      ? new Date(initialData.expense_date).toISOString().split("T")[0]
+      : "",
+  });
 
-  const [isSubmitting, setIsSubmitting] = useState(false)
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handleSelectChange = (name: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-
-    // Simulate API call
-    setTimeout(() => {
-      onSubmit(formData)
-      setIsSubmitting(false)
-    }, 1000)
-  }
+    e.preventDefault();
+    onSubmit(formData);
+  };
 
   return (
     <ModalForm
@@ -61,14 +74,17 @@ export function ExpenseForm({ isOpen, onClose, initialData, onSubmit }: ExpenseF
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="pg_id">Property</Label>
-            <Select value={formData.pg_id} onValueChange={(value) => handleSelectChange("pg_id", value)}>
+            <Select
+              value={formData.pg_id}
+              onValueChange={(value) => handleSelectChange("pg_id", value)}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select property" />
               </SelectTrigger>
               <SelectContent>
-                {pgs.map((pg) => (
-                  <SelectItem key={pg.id} value={pg.id}>
-                    {pg.name}
+                {properties.map((property) => (
+                  <SelectItem key={property.id} value={property.id}>
+                    {property.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -76,16 +92,20 @@ export function ExpenseForm({ isOpen, onClose, initialData, onSubmit }: ExpenseF
           </div>
           <div className="space-y-2">
             <Label htmlFor="category">Category</Label>
-            <Select value={formData.category} onValueChange={(value) => handleSelectChange("category", value)}>
+            <Select
+              value={formData.category}
+              onValueChange={(value) => handleSelectChange("category", value)}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select category" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Maintenance">Maintenance</SelectItem>
-                <SelectItem value="Utility">Utility</SelectItem>
-                <SelectItem value="Salary">Salary</SelectItem>
-                <SelectItem value="Food">Food</SelectItem>
-                <SelectItem value="Miscellaneous">Miscellaneous</SelectItem>
+                <SelectItem value="maintenance">Maintenance</SelectItem>
+                <SelectItem value="utilities">Utilities</SelectItem>
+                <SelectItem value="repairs">Repairs</SelectItem>
+                <SelectItem value="supplies">Supplies</SelectItem>
+                <SelectItem value="staff">Staff</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -130,5 +150,5 @@ export function ExpenseForm({ isOpen, onClose, initialData, onSubmit }: ExpenseF
         </div>
       </div>
     </ModalForm>
-  )
+  );
 }

@@ -1,85 +1,219 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { rents, tenants, pgs } from "@/lib/data"
-import { Download, Mail, MessageCirclePlus, Plus, Search } from "lucide-react"
-import { format } from "date-fns"
-import { RentForm } from "@/components/forms/rent-form"
-import { useToast } from "@/components/ui/use-toast"
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Download,
+  Mail,
+  MessageCirclePlus,
+  Plus,
+  Search,
+  AlertCircle,
+} from "lucide-react";
+import { format } from "date-fns";
+import { RentForm } from "@/components/forms/rent-form";
+import { useToast } from "@/components/ui/use-toast";
+import { rentService, type Rent } from "@/lib/services/rent-service";
+import { tenantService, type Tenant } from "@/lib/services/tenant-service";
+import {
+  propertyService,
+  type Property,
+} from "@/lib/services/property-service";
 
 export default function RentPage() {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [propertyFilter, setPropertyFilter] = useState("")
-  const [statusFilter, setStatusFilter] = useState("")
-  const [monthFilter, setMonthFilter] = useState("")
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [selectedRent, setSelectedRent] = useState<any>(null)
-  const { toast } = useToast()
+  const [searchTerm, setSearchTerm] = useState("");
+  const [propertyFilter, setPropertyFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [monthFilter, setMonthFilter] = useState("");
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedRent, setSelectedRent] = useState<Rent | null>(null);
+  const { toast } = useToast();
+
+  // API data state
+  const [rents, setRents] = useState<Rent[]>([]);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [rentSummary, setRentSummary] = useState({
+    totalCollected: 0,
+    totalPending: 0,
+    totalOverdue: 0,
+    collectionRate: 0,
+  });
+
+  // Load data on component mount
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      // Load all data in parallel
+      const [rentsData, tenantsData, propertiesData] = await Promise.all([
+        rentService.getRents(),
+        tenantService.getTenants(),
+        propertyService.getProperties(),
+      ]);
+
+      setRents(rentsData);
+      setTenants(tenantsData);
+      setProperties(propertiesData);
+
+      // Calculate rent collection summary
+      const summary = calculateRentSummary(rentsData);
+      setRentSummary(summary);
+    } catch (err) {
+      console.error("Error loading rent data:", err);
+      setError("Failed to load rent data. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const calculateRentSummary = (rentsData: Rent[]) => {
+    const totalCollected = rentsData
+      .filter((rent) => rent.status === "paid")
+      .reduce((sum, rent) => sum + rent.amount_paid, 0);
+
+    const totalPending = rentsData
+      .filter((rent) => rent.status === "pending")
+      .reduce((sum, rent) => sum + rent.amount_paid, 0);
+
+    const totalOverdue = rentsData
+      .filter((rent) => rent.status === "overdue")
+      .reduce((sum, rent) => sum + rent.amount_paid, 0);
+
+    const totalExpected = totalCollected + totalPending + totalOverdue;
+    const collectionRate =
+      totalExpected > 0 ? (totalCollected / totalExpected) * 100 : 0;
+
+    return {
+      totalCollected,
+      totalPending,
+      totalOverdue,
+      collectionRate: Math.round(collectionRate),
+    };
+  };
 
   const filteredRents = rents.filter((rent) => {
-    const tenant = tenants.find((t) => t.id === rent.tenant_id)
-    const matchesSearch = tenant?.name.toLowerCase().includes(searchTerm.toLowerCase()) || false
-    const matchesProperty = propertyFilter === "" || rent.pg_id === propertyFilter
-    const matchesStatus = statusFilter === "" || rent.status === statusFilter
+    const tenant = tenants.find((t) => t.id === rent.tenant_id);
+    const matchesSearch =
+      tenant?.name.toLowerCase().includes(searchTerm.toLowerCase()) || false;
+    const matchesProperty =
+      propertyFilter === "" || rent.pg_id === propertyFilter;
+    const matchesStatus = statusFilter === "" || rent.status === statusFilter;
     const matchesMonth =
-      monthFilter === "" || (rent.payment_date && format(new Date(rent.payment_date), "yyyy-MM").includes(monthFilter))
-    return matchesSearch && matchesProperty && matchesStatus && matchesMonth
-  })
+      monthFilter === "" ||
+      (rent.payment_date &&
+        format(new Date(rent.payment_date), "yyyy-MM").includes(monthFilter));
+    return matchesSearch && matchesProperty && matchesStatus && matchesMonth;
+  });
 
-  const handleAddRent = (data: any) => {
-    // In a real app, you would call an API to add the rent payment
-    console.log("Adding rent payment:", data)
-    toast({
-      title: "Rent Payment Added",
-      description: "The rent payment has been recorded successfully.",
-    })
-    setIsAddModalOpen(false)
-  }
+  const handleAddRent = async (data: any) => {
+    try {
+      await rentService.createRentFromForm(data);
+      toast({
+        title: "Rent Payment Added",
+        description: "The rent payment has been recorded successfully.",
+      });
+      setIsAddModalOpen(false);
+      // Reload data to reflect changes
+      await loadData();
+    } catch (error) {
+      console.error("Error adding rent payment:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add rent payment. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
-  const handleEditRent = (data: any) => {
-    // In a real app, you would call an API to update the rent payment
-    console.log("Editing rent payment:", data)
-    toast({
-      title: "Rent Payment Updated",
-      description: "The rent payment has been updated successfully.",
-    })
-    setIsEditModalOpen(false)
-  }
+  const handleEditRent = async (data: any) => {
+    if (!selectedRent) return;
+
+    try {
+      await rentService.updateRentFromForm(selectedRent.id, data);
+      toast({
+        title: "Rent Payment Updated",
+        description: "The rent payment has been updated successfully.",
+      });
+      setIsEditModalOpen(false);
+      setSelectedRent(null);
+      // Reload data to reflect changes
+      await loadData();
+    } catch (error) {
+      console.error("Error updating rent payment:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update rent payment. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleEditClick = (rent: any) => {
-    setSelectedRent(rent)
-    setIsEditModalOpen(true)
-  }
+    setSelectedRent(rent);
+    setIsEditModalOpen(true);
+  };
 
-  const handleMarkAsPaid = (rent: any) => {
-    setSelectedRent({
-      ...rent,
-      status: "paid",
-      payment_date: new Date().toISOString(),
-    })
-    setIsEditModalOpen(true)
-  }
+  const handleMarkAsPaid = async (rent: Rent) => {
+    try {
+      await rentService.markAsPaid(rent.id, rent.amount_paid);
+      toast({
+        title: "Payment Recorded",
+        description: "Rent has been marked as paid successfully.",
+      });
+      // Reload data to reflect changes
+      await loadData();
+    } catch (error) {
+      console.error("Error marking rent as paid:", error);
+      toast({
+        title: "Error",
+        description: "Failed to mark rent as paid. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleExportCSV = () => {
     // In a real app, you would generate and download a CSV file
     toast({
       title: "Export Started",
       description: "Your rent collection data is being exported to CSV.",
-    })
-  }
+    });
+  };
 
   const handleSendMessage = (rent: any) => {
     toast({
       title: "Opening Whatsapp",
       description: "Send the rent reminder to the tenant's WhatsApp.",
-    })
-  }
+    });
+  };
 
   return (
     <div className="flex flex-col">
@@ -97,6 +231,74 @@ export default function RentPage() {
             </Button>
           </div>
         </div>
+
+        {/* Error State */}
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {error}
+              <Button
+                variant="outline"
+                size="sm"
+                className="ml-2"
+                onClick={loadData}
+              >
+                Retry
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Rent Collection Summary */}
+        {!isLoading && !error && (
+          <div className="grid gap-4 md:grid-cols-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Total Collected
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  ₹{rentSummary.totalCollected.toLocaleString()}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Pending</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  ₹{rentSummary.totalPending.toLocaleString()}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Overdue</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600">
+                  ₹{rentSummary.totalOverdue.toLocaleString()}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Collection Rate
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {rentSummary.collectionRate}%
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         <Card>
           <CardHeader>
@@ -121,9 +323,9 @@ export default function RentPage() {
                 onChange={(e) => setPropertyFilter(e.target.value)}
               >
                 <option value="">All Properties</option>
-                {pgs.map((pg) => (
-                  <option key={pg.id} value={pg.id}>
-                    {pg.name}
+                {properties.map((property) => (
+                  <option key={property.id} value={property.id}>
+                    {property.name}
                   </option>
                 ))}
               </select>
@@ -159,61 +361,138 @@ export default function RentPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredRents.map((rent) => {
-                    const tenant = tenants.find((t) => t.id === rent.tenant_id)
-                    const property = pgs.find((pg) => pg.id === rent.pg_id)
-                    return (
-                      <TableRow key={rent.id}>
-                        <TableCell className="font-medium">{tenant?.name || "Unknown"}</TableCell>
-                        <TableCell>{property?.name || "Unknown"}</TableCell>
-                        <TableCell>₹{rent.amount_paid || property?.rent_per_bed || 0}</TableCell>
-                        <TableCell>{format(new Date(rent.due_date), "dd MMM yyyy")}</TableCell>
+                  {isLoading ? (
+                    // Loading skeleton rows
+                    Array.from({ length: 5 }).map((_, index) => (
+                      <TableRow key={index}>
                         <TableCell>
-                          {rent.payment_date ? format(new Date(rent.payment_date), "dd MMM yyyy") : "-"}
+                          <Skeleton className="h-4 w-24" />
                         </TableCell>
                         <TableCell>
-                          <Badge
-                            variant={
-                              rent.status === "paid"
-                                ? "default"
-                                : rent.status === "overdue"
-                                  ? "destructive"
-                                  : "secondary"
-                            }
-                          >
-                            {rent.status}
-                          </Badge>
+                          <Skeleton className="h-4 w-32" />
                         </TableCell>
                         <TableCell>
-                          {rent.status === "pending" || rent.status === "overdue" ? (
-                            <Button variant="default" size="sm" onClick={() => handleMarkAsPaid(rent)}>
-                              Mark as Paid
-                            </Button>
-                          ) : (
-                            <Button variant="outline" size="sm" onClick={() => handleSendMessage(rent)}>
-                              <MessageCirclePlus className="mr-1 h-3 w-3" />
-                              Send Reminder
-                            </Button>
-                          )}
-                          <Button variant="ghost" size="sm" onClick={() => handleEditClick(rent)}>
-                            Edit
-                          </Button>
+                          <Skeleton className="h-4 w-16" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-4 w-20" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-4 w-20" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-4 w-16" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-4 w-24" />
                         </TableCell>
                       </TableRow>
-                    )
-                  })}
+                    ))
+                  ) : filteredRents.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={7}
+                        className="text-center py-8 text-muted-foreground"
+                      >
+                        {error
+                          ? "Failed to load rent data"
+                          : "No rent records found"}
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredRents.map((rent) => {
+                      const tenant = tenants.find(
+                        (t) => t.id === rent.tenant_id,
+                      );
+                      const property = properties.find(
+                        (p) => p.id === rent.pg_id,
+                      );
+                      return (
+                        <TableRow key={rent.id}>
+                          <TableCell className="font-medium">
+                            {tenant?.name || "Unknown"}
+                          </TableCell>
+                          <TableCell>{property?.name || "Unknown"}</TableCell>
+                          <TableCell>
+                            ₹{rent.amount_paid || property?.rent_per_bed || 0}
+                          </TableCell>
+                          <TableCell>
+                            {format(new Date(rent.due_date), "dd MMM yyyy")}
+                          </TableCell>
+                          <TableCell>
+                            {rent.payment_date
+                              ? format(
+                                  new Date(rent.payment_date),
+                                  "dd MMM yyyy",
+                                )
+                              : "-"}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                rent.status === "paid"
+                                  ? "default"
+                                  : rent.status === "overdue"
+                                    ? "destructive"
+                                    : "secondary"
+                              }
+                            >
+                              {rent.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {rent.status === "pending" ||
+                            rent.status === "overdue" ? (
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => handleMarkAsPaid(rent)}
+                              >
+                                Mark as Paid
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleSendMessage(rent)}
+                              >
+                                <MessageCirclePlus className="mr-1 h-3 w-3" />
+                                Send Reminder
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditClick(rent)}
+                            >
+                              Edit
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
                 </TableBody>
               </Table>
             </div>
 
             <div className="mt-4 flex flex-col sm:flex-row justify-between">
               <div>
-                <span className="text-muted-foreground">Total Collected: </span>
+                <span className="text-muted-foreground">
+                  Filtered Total Collected:{" "}
+                </span>
                 <span className="font-bold">
-                  ₹
-                  {filteredRents
-                    .reduce((sum, rent) => sum + (rent.status === "paid" ? rent.amount_paid : 0), 0)
-                    .toLocaleString()}
+                  {isLoading ? (
+                    <Skeleton className="inline-block h-4 w-16" />
+                  ) : (
+                    `₹${filteredRents
+                      .reduce(
+                        (sum, rent) =>
+                          sum + (rent.status === "paid" ? rent.amount_paid : 0),
+                        0,
+                      )
+                      .toLocaleString()}`
+                  )}
                 </span>
               </div>
               <div className="flex gap-2 mt-2 sm:mt-0">
@@ -230,7 +509,11 @@ export default function RentPage() {
       </div>
 
       {/* Add Rent Modal */}
-      <RentForm isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onSubmit={handleAddRent} />
+      <RentForm
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSubmit={handleAddRent}
+      />
 
       {/* Edit Rent Modal */}
       {selectedRent && (
@@ -242,5 +525,5 @@ export default function RentPage() {
         />
       )}
     </div>
-  )
+  );
 }

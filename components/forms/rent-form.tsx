@@ -1,22 +1,37 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState, useEffect } from "react"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { ModalForm } from "@/components/modals/modal-form"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { pgs, tenants } from "@/lib/data"
+import { useState, useEffect } from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ModalForm } from "@/components/modals/modal-form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  propertyService,
+  type Property,
+} from "@/lib/services/property-service";
+import { tenantService, type Tenant } from "@/lib/services/tenant-service";
 
 interface RentFormProps {
-  isOpen: boolean
-  onClose: () => void
-  initialData?: any
-  onSubmit: (data: any) => void
+  isOpen: boolean;
+  onClose: () => void;
+  initialData?: any;
+  onSubmit: (data: any) => void;
 }
 
-export function RentForm({ isOpen, onClose, initialData, onSubmit }: RentFormProps) {
+export function RentForm({
+  isOpen,
+  onClose,
+  initialData,
+  onSubmit,
+}: RentFormProps) {
   const [formData, setFormData] = useState({
     tenant_id: initialData?.tenant_id || "",
     pg_id: initialData?.pg_id || "",
@@ -24,57 +39,90 @@ export function RentForm({ isOpen, onClose, initialData, onSubmit }: RentFormPro
     payment_date: initialData?.payment_date
       ? new Date(initialData.payment_date).toISOString().split("T")[0]
       : new Date().toISOString().split("T")[0],
-    due_date: initialData?.due_date ? new Date(initialData.due_date).toISOString().split("T")[0] : "",
+    due_date: initialData?.due_date
+      ? new Date(initialData.due_date).toISOString().split("T")[0]
+      : "",
     status: initialData?.status || "paid",
     receipt_url: initialData?.receipt_url || "",
-  })
+  });
 
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [filteredTenants, setFilteredTenants] = useState<any[]>([])
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [filteredTenants, setFilteredTenants] = useState<Tenant[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load data when form opens
+  useEffect(() => {
+    if (isOpen) {
+      loadData();
+    }
+  }, [isOpen]);
+
+  const loadData = async () => {
+    try {
+      setIsLoading(true);
+      const [propertiesData, tenantsData] = await Promise.all([
+        propertyService.getProperties(),
+        tenantService.getTenants(),
+      ]);
+      setProperties(propertiesData);
+      setTenants(tenantsData);
+    } catch (error) {
+      console.error("Error loading form data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (formData.pg_id) {
-      const filtered = tenants.filter((tenant) => tenant.pg_id === formData.pg_id && tenant.status === "active")
-      setFilteredTenants(filtered)
+      const filtered = tenants.filter(
+        (tenant) =>
+          tenant.pg_id === formData.pg_id && tenant.status === "active",
+      );
+      setFilteredTenants(filtered);
     } else {
-      setFilteredTenants([])
+      setFilteredTenants([]);
     }
-  }, [formData.pg_id])
+  }, [formData.pg_id, tenants]);
 
   useEffect(() => {
     if (formData.tenant_id) {
-      const tenant = tenants.find((t) => t.id === formData.tenant_id)
+      const tenant = tenants.find((t) => t.id === formData.tenant_id);
       if (tenant) {
-        const property = pgs.find((p) => p.id === tenant.pg_id)
+        const property = properties.find((p) => p.id === tenant.pg_id);
         setFormData((prev) => ({
           ...prev,
           pg_id: tenant.pg_id,
           amount_paid: property?.rent_per_bed || "",
           due_date: tenant.rent_due,
-        }))
+        }));
       }
     }
-  }, [formData.tenant_id])
+  }, [formData.tenant_id, tenants, properties]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handleSelectChange = (name: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
+    e.preventDefault();
+    setIsSubmitting(true);
 
     // Simulate API call
     setTimeout(() => {
-      onSubmit(formData)
-      setIsSubmitting(false)
-    }, 1000)
-  }
+      onSubmit(formData);
+      setIsSubmitting(false);
+    }, 1000);
+  };
 
   return (
     <ModalForm
@@ -89,14 +137,17 @@ export function RentForm({ isOpen, onClose, initialData, onSubmit }: RentFormPro
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="pg_id">Property</Label>
-            <Select value={formData.pg_id} onValueChange={(value) => handleSelectChange("pg_id", value)}>
+            <Select
+              value={formData.pg_id}
+              onValueChange={(value) => handleSelectChange("pg_id", value)}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select property" />
               </SelectTrigger>
               <SelectContent>
-                {pgs.map((pg) => (
-                  <SelectItem key={pg.id} value={pg.id}>
-                    {pg.name}
+                {properties.map((property) => (
+                  <SelectItem key={property.id} value={property.id}>
+                    {property.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -110,7 +161,11 @@ export function RentForm({ isOpen, onClose, initialData, onSubmit }: RentFormPro
               disabled={!formData.pg_id || filteredTenants.length === 0}
             >
               <SelectTrigger>
-                <SelectValue placeholder={!formData.pg_id ? "Select property first" : "Select tenant"} />
+                <SelectValue
+                  placeholder={
+                    !formData.pg_id ? "Select property first" : "Select tenant"
+                  }
+                />
               </SelectTrigger>
               <SelectContent>
                 {filteredTenants.map((tenant) => (
@@ -163,7 +218,10 @@ export function RentForm({ isOpen, onClose, initialData, onSubmit }: RentFormPro
           </div>
           <div className="space-y-2">
             <Label htmlFor="status">Status</Label>
-            <Select value={formData.status} onValueChange={(value) => handleSelectChange("status", value)}>
+            <Select
+              value={formData.status}
+              onValueChange={(value) => handleSelectChange("status", value)}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
@@ -188,5 +246,5 @@ export function RentForm({ isOpen, onClose, initialData, onSubmit }: RentFormPro
         </div>
       </div>
     </ModalForm>
-  )
+  );
 }

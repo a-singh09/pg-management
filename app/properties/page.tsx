@@ -1,64 +1,184 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { pgs } from "@/lib/data"
-import { Plus, Search } from "lucide-react"
-import { PropertyForm } from "@/components/forms/property-form"
-import { useToast } from "@/components/ui/use-toast"
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Search, Loader2 } from "lucide-react";
+import { PropertyForm } from "@/components/forms/property-form";
+import { useToast } from "@/components/ui/use-toast";
+import { propertyService } from "@/lib/services/property-service";
+import {
+  Property,
+  CreatePropertyData,
+  UpdatePropertyData,
+} from "@/lib/transformers/property-transformer";
+import { ApiError, ApiErrorType } from "@/lib/api-client";
 
 export default function PropertiesPage() {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [propertyType, setPropertyType] = useState("")
-  const [location, setLocation] = useState("")
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [isViewModalOpen, setIsViewModalOpen] = useState(false)
-  const [selectedProperty, setSelectedProperty] = useState<any>(null)
-  const { toast } = useToast()
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [propertyType, setPropertyType] = useState("");
+  const [location, setLocation] = useState("");
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [selectedProperty, setSelectedProperty] = useState<Property | null>(
+    null,
+  );
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
 
-  const filteredProperties = pgs.filter((property) => {
+  // Load properties on component mount
+  useEffect(() => {
+    loadProperties();
+  }, []);
+
+  const loadProperties = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await propertyService.getProperties();
+      setProperties(data);
+    } catch (err) {
+      const apiError = err as ApiError;
+      setError(apiError.message || "Failed to load properties");
+
+      if (apiError.type === ApiErrorType.AUTHENTICATION_ERROR) {
+        toast({
+          title: "Authentication Error",
+          description: "Please log in to access properties.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: apiError.message || "Failed to load properties",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredProperties = properties.filter((property) => {
     const matchesSearch =
       property.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      property.location.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesType = propertyType === "" || property.name.toLowerCase().includes(propertyType.toLowerCase())
-    const matchesLocation = location === "" || property.location.toLowerCase().includes(location.toLowerCase())
-    return matchesSearch && matchesType && matchesLocation
-  })
+      property.location.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType =
+      propertyType === "" ||
+      property.name.toLowerCase().includes(propertyType.toLowerCase());
+    const matchesLocation =
+      location === "" ||
+      property.location.toLowerCase().includes(location.toLowerCase());
+    return matchesSearch && matchesType && matchesLocation;
+  });
 
-  const handleAddProperty = (data: any) => {
-    // In a real app, you would call an API to add the property
-    console.log("Adding property:", data)
-    toast({
-      title: "Property Added",
-      description: `${data.name} has been added successfully.`,
-    })
-    setIsAddModalOpen(false)
-  }
+  const handleAddProperty = async (data: CreatePropertyData) => {
+    try {
+      setIsSubmitting(true);
+      const newProperty = await propertyService.createProperty(data);
+      setProperties((prev) => [...prev, newProperty]);
+      toast({
+        title: "Property Added",
+        description: `${data.name} has been added successfully.`,
+      });
+      setIsAddModalOpen(false);
+    } catch (err) {
+      const apiError = err as ApiError;
+      toast({
+        title: "Error",
+        description: apiError.message || "Failed to add property",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-  const handleEditProperty = (data: any) => {
-    // In a real app, you would call an API to update the property
-    console.log("Editing property:", data)
-    toast({
-      title: "Property Updated",
-      description: `${data.name} has been updated successfully.`,
-    })
-    setIsEditModalOpen(false)
-  }
+  const handleEditProperty = async (data: UpdatePropertyData) => {
+    if (!selectedProperty) return;
 
-  const handleViewProperty = (property: any) => {
-    setSelectedProperty(property)
-    setIsViewModalOpen(true)
-  }
+    try {
+      setIsSubmitting(true);
+      const updatedProperty = await propertyService.updateProperty(
+        selectedProperty.id,
+        data,
+      );
+      setProperties((prev) =>
+        prev.map((p) => (p.id === selectedProperty.id ? updatedProperty : p)),
+      );
+      toast({
+        title: "Property Updated",
+        description: `${data.name || selectedProperty.name} has been updated successfully.`,
+      });
+      setIsEditModalOpen(false);
+      setSelectedProperty(null);
+    } catch (err) {
+      const apiError = err as ApiError;
+      toast({
+        title: "Error",
+        description: apiError.message || "Failed to update property",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-  const handleEditClick = (property: any) => {
-    setSelectedProperty(property)
-    setIsEditModalOpen(true)
-  }
+  const handleViewProperty = (property: Property) => {
+    setSelectedProperty(property);
+    setIsViewModalOpen(true);
+  };
+
+  const handleEditClick = (property: Property) => {
+    setSelectedProperty(property);
+    setIsEditModalOpen(true);
+  };
+
+  const handleDeleteProperty = async (property: Property) => {
+    if (
+      !confirm(
+        `Are you sure you want to delete "${property.name}"? This action cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await propertyService.deleteProperty(property.id);
+      setProperties((prev) => prev.filter((p) => p.id !== property.id));
+      toast({
+        title: "Property Deleted",
+        description: `${property.name} has been deleted successfully.`,
+      });
+    } catch (err) {
+      const apiError = err as ApiError;
+      toast({
+        title: "Error",
+        description: apiError.message || "Failed to delete property",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="flex flex-col">
@@ -74,7 +194,9 @@ export default function PropertiesPage() {
         <Card>
           <CardHeader>
             <CardTitle>Property Management</CardTitle>
-            <CardDescription>Manage your PGs, hostels, and apartments</CardDescription>
+            <CardDescription>
+              Manage your PGs, hostels, and apartments
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col md:flex-row items-start md:items-center gap-4 mb-4">
@@ -124,35 +246,92 @@ export default function PropertiesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredProperties.map((property) => (
-                    <TableRow key={property.id}>
-                      <TableCell className="font-medium">{property.name}</TableCell>
-                      <TableCell>{property.location}</TableCell>
-                      <TableCell>{property.total_rooms}</TableCell>
-                      <TableCell>{property.available_beds}</TableCell>
-                      <TableCell>₹{property.rent_per_bed}</TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {property.facilities.slice(0, 2).map((facility) => (
-                            <Badge key={facility} variant="outline">
-                              {facility}
-                            </Badge>
-                          ))}
-                          {property.facilities.length > 2 && (
-                            <Badge variant="outline">+{property.facilities.length - 2}</Badge>
-                          )}
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8">
+                        <div className="flex items-center justify-center">
+                          <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                          Loading properties...
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="sm" onClick={() => handleViewProperty(property)}>
-                          View
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleEditClick(property)}>
-                          Edit
-                        </Button>
+                    </TableRow>
+                  ) : error ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8">
+                        <div className="text-red-500">
+                          <p>{error}</p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={loadProperties}
+                            className="mt-2"
+                          >
+                            Retry
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : filteredProperties.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8">
+                        <p className="text-muted-foreground">
+                          No properties found
+                        </p>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredProperties.map((property) => (
+                      <TableRow key={property.id}>
+                        <TableCell className="font-medium">
+                          {property.name}
+                        </TableCell>
+                        <TableCell>{property.location}</TableCell>
+                        <TableCell>{property.total_rooms}</TableCell>
+                        <TableCell>{property.available_beds}</TableCell>
+                        <TableCell>₹{property.rent_per_bed}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {property.facilities.slice(0, 2).map((facility) => (
+                              <Badge key={facility} variant="outline">
+                                {facility}
+                              </Badge>
+                            ))}
+                            {property.facilities.length > 2 && (
+                              <Badge variant="outline">
+                                +{property.facilities.length - 2}
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleViewProperty(property)}
+                            >
+                              View
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditClick(property)}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteProperty(property)}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </div>
@@ -161,7 +340,11 @@ export default function PropertiesPage() {
       </div>
 
       {/* Add Property Modal */}
-      <PropertyForm isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onSubmit={handleAddProperty} />
+      <PropertyForm
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSubmit={handleAddProperty}
+      />
 
       {/* Edit Property Modal */}
       {selectedProperty && (
@@ -183,5 +366,5 @@ export default function PropertiesPage() {
         />
       )}
     </div>
-  )
+  );
 }
