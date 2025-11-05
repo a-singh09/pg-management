@@ -12,8 +12,10 @@ export interface Property {
   owner: string;
   contact: string;
   total_rooms: number;
+  total_beds: number;
   available_beds: number;
   rent_per_bed: number;
+  type: string;
   facilities: string[];
   staff: string[];
   created_at: string;
@@ -28,6 +30,7 @@ export interface BackendProperty {
   ownerName: string;
   contactNumber: string;
   totalRooms: number;
+  totalBeds: number;
   availableBeds?: number;
   rentPerBed: number;
   facilities: string[];
@@ -50,8 +53,9 @@ export interface CreatePropertyData {
   owner: string;
   contact: string;
   total_rooms: number;
-  beds_per_room: number;
+  total_beds: number;
   rent_per_bed: number;
+  type: string;
   facilities: string[];
 }
 
@@ -73,7 +77,9 @@ export class PropertyTransformer extends BaseTransformer<
       "owner",
       "contact",
       "total_rooms",
+      "total_beds",
       "rent_per_bed",
+      "type",
     ]);
 
     const backendProperty: BackendProperty = {
@@ -83,10 +89,11 @@ export class PropertyTransformer extends BaseTransformer<
       ownerName: property.owner,
       contactNumber: property.contact,
       totalRooms: property.total_rooms,
+      totalBeds: property.total_beds,
       availableBeds: property.available_beds,
       rentPerBed: property.rent_per_bed,
       facilities: property.facilities || [],
-      type: "PG",
+      type: property.type,
       ownerId: "", // This will be set by the backend based on JWT token
       created_at: this.isoToDate(property.created_at),
       updated_at: this.isoToDate(property.updated_at),
@@ -106,8 +113,10 @@ export class PropertyTransformer extends BaseTransformer<
       owner: backendProperty.ownerName,
       contact: backendProperty.contactNumber,
       total_rooms: backendProperty.totalRooms,
+      total_beds: backendProperty.totalBeds,
       available_beds: backendProperty.availableBeds || 0,
       rent_per_bed: backendProperty.rentPerBed,
+      type: backendProperty.type,
       facilities: backendProperty.facilities || [],
       staff: [], // Staff will be populated separately if needed
       created_at: this.timestampToISO(backendProperty.created_at),
@@ -127,8 +136,9 @@ export class PropertyTransformer extends BaseTransformer<
       "owner",
       "contact",
       "total_rooms",
-      "beds_per_room",
+      "total_beds",
       "rent_per_bed",
+      "type",
     ]);
 
     return {
@@ -137,10 +147,10 @@ export class PropertyTransformer extends BaseTransformer<
       ownerName: data.owner, // Backend expects 'ownerName'
       contactNumber: data.contact, // Backend expects 'contactNumber'
       totalRooms: data.total_rooms, // Backend expects 'totalRooms'
-      bedsPerRoom: data.beds_per_room, // Backend expects 'bedsPerRoom'
+      totalBeds: data.total_beds, // Backend expects 'totalBeds'
       rentPerBed: data.rent_per_bed, // Backend expects 'rentPerBed'
       facilities: data.facilities || [],
-      type: "PG", // Default type
+      type: data.type, // Property type from dropdown
     };
   }
 
@@ -156,8 +166,10 @@ export class PropertyTransformer extends BaseTransformer<
     if (data.contact !== undefined) updateData.contactNumber = data.contact;
     if (data.total_rooms !== undefined)
       updateData.totalRooms = data.total_rooms;
+    if (data.total_beds !== undefined) updateData.totalBeds = data.total_beds;
     if (data.rent_per_bed !== undefined)
       updateData.rentPerBed = data.rent_per_bed;
+    if (data.type !== undefined) updateData.type = data.type;
     if (data.facilities !== undefined) updateData.facilities = data.facilities;
 
     return this.cleanObject(updateData);

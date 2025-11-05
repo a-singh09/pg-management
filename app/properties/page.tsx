@@ -238,7 +238,9 @@ export default function PropertiesPage() {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Location</TableHead>
+                    <TableHead>Type</TableHead>
                     <TableHead>Total Rooms</TableHead>
+                    <TableHead>Total Beds</TableHead>
                     <TableHead>Available Beds</TableHead>
                     <TableHead>Rent/Bed</TableHead>
                     <TableHead>Facilities</TableHead>
@@ -248,7 +250,7 @@ export default function PropertiesPage() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8">
+                      <TableCell colSpan={9} className="text-center py-8">
                         <div className="flex items-center justify-center">
                           <Loader2 className="h-6 w-6 animate-spin mr-2" />
                           Loading properties...
@@ -257,7 +259,7 @@ export default function PropertiesPage() {
                     </TableRow>
                   ) : error ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8">
+                      <TableCell colSpan={9} className="text-center py-8">
                         <div className="text-red-500">
                           <p>{error}</p>
                           <Button
@@ -273,7 +275,7 @@ export default function PropertiesPage() {
                     </TableRow>
                   ) : filteredProperties.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8">
+                      <TableCell colSpan={9} className="text-center py-8">
                         <p className="text-muted-foreground">
                           No properties found
                         </p>
@@ -286,7 +288,11 @@ export default function PropertiesPage() {
                           {property.name}
                         </TableCell>
                         <TableCell>{property.location}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{property.type}</Badge>
+                        </TableCell>
                         <TableCell>{property.total_rooms}</TableCell>
+                        <TableCell>{property.total_beds}</TableCell>
                         <TableCell>{property.available_beds}</TableCell>
                         <TableCell>₹{property.rent_per_bed}</TableCell>
                         <TableCell>

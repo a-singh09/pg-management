@@ -10,6 +10,13 @@ import { Label } from "@/components/ui/label";
 import { ModalForm } from "@/components/modals/modal-form";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface PropertyFormProps {
   isOpen: boolean;
@@ -30,8 +37,9 @@ export function PropertyForm({
     owner: initialData?.owner || "",
     contact: initialData?.contact || "",
     total_rooms: initialData?.total_rooms || "",
-    beds_per_room: initialData?.beds_per_room || "2",
+    total_beds: initialData?.total_beds || "",
     rent_per_bed: initialData?.rent_per_bed || "",
+    type: initialData?.type || "",
     facilities: initialData?.facilities || [],
     newFacility: "",
   });
@@ -42,6 +50,10 @@ export function PropertyForm({
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSelectChange = (name: string, value: string) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -66,17 +78,11 @@ export function PropertyForm({
     e.preventDefault();
     const { newFacility, ...dataToSubmit } = formData;
 
-    // Validate contact number
-    if (!/^[0-9]{10}$/.test(dataToSubmit.contact)) {
-      alert("Contact number must be exactly 10 digits");
-      return;
-    }
-
     // Convert string numbers to actual numbers
     const processedData = {
       ...dataToSubmit,
       total_rooms: parseInt(dataToSubmit.total_rooms) || 0,
-      beds_per_room: parseInt(dataToSubmit.beds_per_room) || 2,
+      total_beds: parseInt(dataToSubmit.total_beds) || 0,
       rent_per_bed: parseInt(dataToSubmit.rent_per_bed) || 0,
     };
 
@@ -138,11 +144,28 @@ export function PropertyForm({
               type="tel"
               value={formData.contact}
               onChange={handleChange}
-              placeholder="Enter 10-digit contact number"
-              pattern="[0-9]{10}"
-              maxLength={10}
+              placeholder="Enter contact number"
               required
             />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="type">Property Type</Label>
+            <Select
+              value={formData.type}
+              onValueChange={(value) => handleSelectChange("type", value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select property type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="PG">PG</SelectItem>
+                <SelectItem value="Hostel">Hostel</SelectItem>
+                <SelectItem value="Apartment">Apartment</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -160,16 +183,15 @@ export function PropertyForm({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="beds_per_room">Beds Per Room</Label>
+            <Label htmlFor="total_beds">Total Beds</Label>
             <Input
-              id="beds_per_room"
-              name="beds_per_room"
+              id="total_beds"
+              name="total_beds"
               type="number"
-              value={formData.beds_per_room}
+              value={formData.total_beds}
               onChange={handleChange}
-              placeholder="Enter beds per room"
+              placeholder="Enter total beds"
               min="1"
-              max="10"
               required
             />
           </div>
