@@ -32,6 +32,7 @@ import {
 import { format } from "date-fns";
 import { RentForm } from "@/components/forms/rent-form";
 import { useToast } from "@/components/ui/use-toast";
+import { ActionsDropdown } from "@/components/ui/actions-dropdown";
 import { rentService, type Rent } from "@/lib/services/rent-service";
 import { tenantService, type Tenant } from "@/lib/services/tenant-service";
 import {
@@ -441,32 +442,30 @@ export default function RentPage() {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            {rent.status === "pending" ||
-                            rent.status === "overdue" ? (
-                              <Button
-                                variant="default"
-                                size="sm"
-                                onClick={() => handleMarkAsPaid(rent)}
-                              >
-                                Mark as Paid
-                              </Button>
-                            ) : (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleSendMessage(rent)}
-                              >
-                                <MessageCirclePlus className="mr-1 h-3 w-3" />
-                                Send Reminder
-                              </Button>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditClick(rent)}
-                            >
-                              Edit
-                            </Button>
+                            <ActionsDropdown
+                              onEdit={() => handleEditClick(rent)}
+                              showView={false}
+                              showDelete={false}
+                              customActions={[
+                                ...(rent.status === "pending" ||
+                                rent.status === "overdue"
+                                  ? [
+                                      {
+                                        label: "Mark as Paid",
+                                        onClick: () => handleMarkAsPaid(rent),
+                                      },
+                                    ]
+                                  : [
+                                      {
+                                        label: "Send Reminder",
+                                        icon: (
+                                          <MessageCirclePlus className="h-4 w-4" />
+                                        ),
+                                        onClick: () => handleSendMessage(rent),
+                                      },
+                                    ]),
+                              ]}
+                            />
                           </TableCell>
                         </TableRow>
                       );

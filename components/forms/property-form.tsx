@@ -23,6 +23,7 @@ interface PropertyFormProps {
   onClose: () => void;
   initialData?: any;
   onSubmit: (data: any) => void;
+  isViewOnly?: boolean;
 }
 
 export function PropertyForm({
@@ -30,6 +31,7 @@ export function PropertyForm({
   onClose,
   initialData,
   onSubmit,
+  isViewOnly = false,
 }: PropertyFormProps) {
   const [formData, setFormData] = useState({
     name: initialData?.name || "",
@@ -91,12 +93,21 @@ export function PropertyForm({
 
   return (
     <ModalForm
-      title={initialData ? "Edit Property" : "Add New Property"}
-      description="Enter the details of the property"
+      title={
+        isViewOnly
+          ? "View Property"
+          : initialData
+            ? "Edit Property"
+            : "Add New Property"
+      }
+      description={
+        isViewOnly ? "Property details" : "Enter the details of the property"
+      }
       isOpen={isOpen}
       onClose={onClose}
-      onSubmit={handleSubmit}
+      onSubmit={isViewOnly ? onClose : handleSubmit}
       isSubmitting={isSubmitting}
+      hideSubmitButton={isViewOnly}
     >
       <div className="grid gap-4 py-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -109,6 +120,7 @@ export function PropertyForm({
               onChange={handleChange}
               placeholder="Enter property name"
               required
+              disabled={isViewOnly}
             />
           </div>
           <div className="space-y-2">
@@ -120,6 +132,7 @@ export function PropertyForm({
               onChange={handleChange}
               placeholder="Enter location"
               required
+              disabled={isViewOnly}
             />
           </div>
         </div>
@@ -134,6 +147,7 @@ export function PropertyForm({
               onChange={handleChange}
               placeholder="Enter owner name"
               required
+              disabled={isViewOnly}
             />
           </div>
           <div className="space-y-2">
@@ -146,6 +160,7 @@ export function PropertyForm({
               onChange={handleChange}
               placeholder="Enter contact number"
               required
+              disabled={isViewOnly}
             />
           </div>
         </div>
@@ -156,6 +171,7 @@ export function PropertyForm({
             <Select
               value={formData.type}
               onValueChange={(value) => handleSelectChange("type", value)}
+              disabled={isViewOnly}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select property type" />
@@ -180,6 +196,7 @@ export function PropertyForm({
               onChange={handleChange}
               placeholder="Enter total rooms"
               required
+              disabled={isViewOnly}
             />
           </div>
           <div className="space-y-2">
@@ -193,6 +210,7 @@ export function PropertyForm({
               placeholder="Enter total beds"
               min="1"
               required
+              disabled={isViewOnly}
             />
           </div>
           <div className="space-y-2">
@@ -205,6 +223,7 @@ export function PropertyForm({
               onChange={handleChange}
               placeholder="Enter rent per bed"
               required
+              disabled={isViewOnly}
             />
           </div>
         </div>
@@ -219,28 +238,36 @@ export function PropertyForm({
                 className="flex items-center gap-1"
               >
                 {facility}
-                <button
-                  type="button"
-                  onClick={() => handleRemoveFacility(facility)}
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-3 w-3" />
-                </button>
+                {!isViewOnly && (
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveFacility(facility)}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
               </Badge>
             ))}
           </div>
-          <div className="flex gap-2">
-            <Input
-              id="newFacility"
-              name="newFacility"
-              value={formData.newFacility}
-              onChange={handleChange}
-              placeholder="Add a facility"
-            />
-            <Button type="button" onClick={handleAddFacility} variant="outline">
-              Add
-            </Button>
-          </div>
+          {!isViewOnly && (
+            <div className="flex gap-2">
+              <Input
+                id="newFacility"
+                name="newFacility"
+                value={formData.newFacility}
+                onChange={handleChange}
+                placeholder="Add a facility"
+              />
+              <Button
+                type="button"
+                onClick={handleAddFacility}
+                variant="outline"
+              >
+                Add
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </ModalForm>

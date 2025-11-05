@@ -25,6 +25,7 @@ import { Plus, Search, AlertCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { IssueForm } from "@/components/forms/issue-form";
 import { useToast } from "@/components/ui/use-toast";
+import { ActionsDropdown } from "@/components/ui/actions-dropdown";
 import { issueService, propertyService, tenantService } from "@/lib/services";
 import { Issue, CreateIssueData, UpdateIssueData } from "@/lib/transformers";
 import { Property } from "@/lib/transformers/property-transformer";
@@ -421,33 +422,30 @@ export default function IssuesPage() {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <div className="flex gap-2">
-                              {issue.status === "pending" && (
-                                <Button
-                                  variant="default"
-                                  size="sm"
-                                  onClick={() => handleStartWork(issue)}
-                                >
-                                  Start Work
-                                </Button>
-                              )}
-                              {issue.status === "in_progress" && (
-                                <Button
-                                  variant="default"
-                                  size="sm"
-                                  onClick={() => handleMarkResolved(issue)}
-                                >
-                                  Mark Resolved
-                                </Button>
-                              )}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleViewIssue(issue)}
-                              >
-                                Details
-                              </Button>
-                            </div>
+                            <ActionsDropdown
+                              onView={() => handleViewIssue(issue)}
+                              onEdit={() => handleEditClick(issue)}
+                              showDelete={false}
+                              customActions={[
+                                ...(issue.status === "pending"
+                                  ? [
+                                      {
+                                        label: "Start Work",
+                                        onClick: () => handleStartWork(issue),
+                                      },
+                                    ]
+                                  : []),
+                                ...(issue.status === "in_progress"
+                                  ? [
+                                      {
+                                        label: "Mark Resolved",
+                                        onClick: () =>
+                                          handleMarkResolved(issue),
+                                      },
+                                    ]
+                                  : []),
+                              ]}
+                            />
                           </TableCell>
                         </TableRow>
                       );

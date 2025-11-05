@@ -24,6 +24,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Plus, Search, AlertCircle } from "lucide-react";
 import { FoodForm } from "@/components/forms/food-form";
 import { useToast } from "@/components/ui/use-toast";
+import { ActionsDropdown } from "@/components/ui/actions-dropdown";
 import { foodService, propertyService } from "@/lib/services";
 import {
   Food,
@@ -336,27 +337,11 @@ export default function FoodPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEditClick(entry)}
-                          >
-                            Edit
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleViewFood(entry)}
-                          >
-                            View Details
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteFood(entry.id)}
-                          >
-                            Delete
-                          </Button>
+                          <ActionsDropdown
+                            onView={() => handleViewFood(entry)}
+                            onEdit={() => handleEditClick(entry)}
+                            onDelete={() => handleDeleteFood(entry.id)}
+                          />
                         </TableCell>
                       </TableRow>
                     );

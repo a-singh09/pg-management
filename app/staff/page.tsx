@@ -32,6 +32,7 @@ import { Plus, Search, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { StaffForm } from "@/components/forms/staff-form";
 import { useToast } from "@/components/ui/use-toast";
+import { ActionsDropdown } from "@/components/ui/actions-dropdown";
 
 export default function StaffPage() {
   const [staff, setStaff] = useState<Staff[]>([]);
@@ -382,30 +383,11 @@ export default function StaffPage() {
                             )}
                           </TableCell>
                           <TableCell>
-                            <div className="flex gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleViewStaff(member)}
-                              >
-                                View
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleEditClick(member)}
-                              >
-                                Edit
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDeleteStaff(member.id)}
-                                className="text-red-600 hover:text-red-700"
-                              >
-                                Delete
-                              </Button>
-                            </div>
+                            <ActionsDropdown
+                              onView={() => handleViewStaff(member)}
+                              onEdit={() => handleEditClick(member)}
+                              onDelete={() => handleDeleteStaff(member.id)}
+                            />
                           </TableCell>
                         </TableRow>
                       );

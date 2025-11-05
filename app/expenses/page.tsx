@@ -24,6 +24,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Download, Plus, Search, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { ExpenseForm } from "@/components/forms/expense-form";
+import { ActionsDropdown } from "@/components/ui/actions-dropdown";
+import { DeleteConfirmationDialog } from "@/components/dialogs/delete-confirmation-dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { expenseService, propertyService } from "@/lib/services";
 import { ApiError, ApiErrorType } from "@/lib/api-client";
@@ -40,7 +42,6 @@ export default function ExpensesPage() {
   const [dateFilter, setDateFilter] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -179,20 +180,33 @@ export default function ExpensesPage() {
     setIsEditModalOpen(true);
   };
 
-  const handleDeleteExpense = async (expenseId: string) => {
-    if (!confirm("Are you sure you want to delete this expense?")) return;
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
+
+  const handleDeleteClick = (expense: Expense) => {
+    setSelectedExpense(expense);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!selectedExpense) return;
 
     try {
-      setActionLoading(`delete-${expenseId}`);
+      setActionLoading(`delete-${selectedExpense.id}`);
 
-      await expenseService.deleteExpense(expenseId);
+      await expenseService.deleteExpense(selectedExpense.id);
 
-      setExpenses((prev) => prev.filter((expense) => expense.id !== expenseId));
+      setExpenses((prev) =>
+        prev.filter((expense) => expense.id !== selectedExpense.id),
+      );
 
       toast({
         title: "Expense Deleted",
         description: "The expense has been deleted successfully.",
       });
+
+      setIsDeleteDialogOpen(false);
+      setSelectedExpense(null);
     } catch (err) {
       console.error("Failed to delete expense:", err);
       const apiError = err as ApiError;
@@ -202,6 +216,7 @@ export default function ExpensesPage() {
         description: apiError.message || "Failed to delete expense",
         variant: "destructive",
       });
+      throw err;
     } finally {
       setActionLoading(null);
     }
@@ -375,24 +390,11 @@ export default function ExpensesPage() {
                             )}
                           </TableCell>
                           <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditClick(expense)}
-                              disabled={actionLoading !== null}
-                            >
-                              Edit
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteExpense(expense.id)}
-                              disabled={actionLoading !== null}
-                            >
-                              {actionLoading === `delete-${expense.id}`
-                                ? "Deleting..."
-                                : "Delete"}
-                            </Button>
+                            <ActionsDropdown
+                              onEdit={() => handleEditClick(expense)}
+                              onDelete={() => handleDeleteClick(expense)}
+                              showView={false}
+                            />
                           </TableCell>
                         </TableRow>
                       );
@@ -445,6 +447,18 @@ export default function ExpensesPage() {
           isSubmitting={actionLoading === "edit"}
         />
       )}
+
+      {/* Delete Expense Dialog */}
+      <DeleteConfirmationDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => {
+          setIsDeleteDialogOpen(false);
+          setSelectedExpense(null);
+        }}
+        onConfirm={handleDeleteConfirm}
+        title="Are you sure you want to delete this expense?"
+        description={`This action cannot be undone. This will permanently delete the expense "${selectedExpense?.description}".`}
+      />
     </div>
   );
 }

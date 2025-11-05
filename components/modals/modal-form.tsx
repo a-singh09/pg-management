@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -10,16 +10,17 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 
 interface ModalFormProps {
-  title: string
-  description?: string
-  isOpen: boolean
-  onClose: () => void
-  onSubmit: (e: React.FormEvent) => void
-  children: React.ReactNode
-  isSubmitting?: boolean
+  title: string;
+  description?: string;
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (e: React.FormEvent) => void;
+  children: React.ReactNode;
+  isSubmitting?: boolean;
+  hideSubmitButton?: boolean;
 }
 
 export function ModalForm({
@@ -30,6 +31,7 @@ export function ModalForm({
   onSubmit,
   children,
   isSubmitting = false,
+  hideSubmitButton = false,
 }: ModalFormProps) {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -37,19 +39,23 @@ export function ModalForm({
         <form onSubmit={onSubmit}>
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
-            {description && <DialogDescription>{description}</DialogDescription>}
+            {description && (
+              <DialogDescription>{description}</DialogDescription>
+            )}
           </DialogHeader>
           <div className="py-4">{children}</div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
+              {hideSubmitButton ? "Close" : "Cancel"}
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Saving..." : "Save"}
-            </Button>
+            {!hideSubmitButton && (
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Saving..." : "Save"}
+              </Button>
+            )}
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

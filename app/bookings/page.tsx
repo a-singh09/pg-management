@@ -26,6 +26,7 @@ import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { BookingForm } from "@/components/forms/booking-form";
 import { useToast } from "@/components/ui/use-toast";
+import { ActionsDropdown } from "@/components/ui/actions-dropdown";
 import {
   bookingService,
   type Booking,
@@ -506,22 +507,22 @@ export default function BookingsPage() {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditClick(booking)}
-                            >
-                              Edit
-                            </Button>
-                            {booking.status === "pending" && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleConfirmBooking(booking)}
-                              >
-                                Confirm
-                              </Button>
-                            )}
+                            <ActionsDropdown
+                              onEdit={() => handleEditClick(booking)}
+                              showView={false}
+                              showDelete={false}
+                              customActions={
+                                booking.status === "pending"
+                                  ? [
+                                      {
+                                        label: "Confirm",
+                                        onClick: () =>
+                                          handleConfirmBooking(booking),
+                                      },
+                                    ]
+                                  : []
+                              }
+                            />
                           </TableCell>
                         </TableRow>
                       );

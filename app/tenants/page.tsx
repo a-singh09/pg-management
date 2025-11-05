@@ -32,6 +32,7 @@ import { Search, UserPlus, AlertCircle, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { TenantForm } from "@/components/forms/tenant-form";
 import { useToast } from "@/components/ui/use-toast";
+import { ActionsDropdown } from "@/components/ui/actions-dropdown";
 
 export default function TenantsPage() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -375,30 +376,11 @@ export default function TenantsPage() {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <div className="flex gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleViewTenant(tenant)}
-                              >
-                                View
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleEditClick(tenant)}
-                              >
-                                Edit
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDeleteTenant(tenant)}
-                                className="text-destructive hover:text-destructive"
-                              >
-                                Delete
-                              </Button>
-                            </div>
+                            <ActionsDropdown
+                              onView={() => handleViewTenant(tenant)}
+                              onEdit={() => handleEditClick(tenant)}
+                              onDelete={() => handleDeleteTenant(tenant)}
+                            />
                           </TableCell>
                         </TableRow>
                       );

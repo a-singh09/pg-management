@@ -21,7 +21,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Loader2 } from "lucide-react";
 import { PropertyForm } from "@/components/forms/property-form";
+import { DeleteConfirmationDialog } from "@/components/dialogs/delete-confirmation-dialog";
 import { useToast } from "@/components/ui/use-toast";
+import { ActionsDropdown } from "@/components/ui/actions-dropdown";
 import { propertyService } from "@/lib/services/property-service";
 import {
   Property,
@@ -36,10 +38,10 @@ export default function PropertiesPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [propertyType, setPropertyType] = useState("");
-  const [location, setLocation] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(
     null,
   );
@@ -85,11 +87,8 @@ export default function PropertiesPage() {
       property.location.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType =
       propertyType === "" ||
-      property.name.toLowerCase().includes(propertyType.toLowerCase());
-    const matchesLocation =
-      location === "" ||
-      property.location.toLowerCase().includes(location.toLowerCase());
-    return matchesSearch && matchesType && matchesLocation;
+      property.type.toLowerCase() === propertyType.toLowerCase();
+    return matchesSearch && matchesType;
   });
 
   const handleAddProperty = async (data: CreatePropertyData) => {
@@ -154,22 +153,23 @@ export default function PropertiesPage() {
     setIsEditModalOpen(true);
   };
 
-  const handleDeleteProperty = async (property: Property) => {
-    if (
-      !confirm(
-        `Are you sure you want to delete "${property.name}"? This action cannot be undone.`,
-      )
-    ) {
-      return;
-    }
+  const handleDeleteClick = (property: Property) => {
+    setSelectedProperty(property);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!selectedProperty) return;
 
     try {
-      await propertyService.deleteProperty(property.id);
-      setProperties((prev) => prev.filter((p) => p.id !== property.id));
+      await propertyService.deleteProperty(selectedProperty.id);
+      setProperties((prev) => prev.filter((p) => p.id !== selectedProperty.id));
       toast({
         title: "Property Deleted",
-        description: `${property.name} has been deleted successfully.`,
+        description: `${selectedProperty.name} has been deleted successfully.`,
       });
+      setIsDeleteDialogOpen(false);
+      setSelectedProperty(null);
     } catch (err) {
       const apiError = err as ApiError;
       toast({
@@ -177,6 +177,7 @@ export default function PropertiesPage() {
         description: apiError.message || "Failed to delete property",
         variant: "destructive",
       });
+      throw err; // Re-throw to prevent dialog from closing
     }
   };
 
@@ -216,19 +217,9 @@ export default function PropertiesPage() {
                 onChange={(e) => setPropertyType(e.target.value)}
               >
                 <option value="">All Types</option>
-                <option value="pg">PG</option>
-                <option value="hostel">Hostel</option>
-                <option value="apartment">Apartment</option>
-              </select>
-              <select
-                className="border rounded-md h-10 px-3 py-2 w-full md:w-auto"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-              >
-                <option value="">All Locations</option>
-                <option value="bangalore">Bangalore</option>
-                <option value="mumbai">Mumbai</option>
-                <option value="delhi">Delhi</option>
+                <option value="PG">PG</option>
+                <option value="Hostel">Hostel</option>
+                <option value="Apartment">Apartment</option>
               </select>
             </div>
 
@@ -310,30 +301,11 @@ export default function PropertiesPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleViewProperty(property)}
-                            >
-                              View
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditClick(property)}
-                            >
-                              Edit
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteProperty(property)}
-                              className="text-red-600 hover:text-red-700"
-                            >
-                              Delete
-                            </Button>
-                          </div>
+                          <ActionsDropdown
+                            onView={() => handleViewProperty(property)}
+                            onEdit={() => handleEditClick(property)}
+                            onDelete={() => handleDeleteClick(property)}
+                          />
                         </TableCell>
                       </TableRow>
                     ))
@@ -369,8 +341,23 @@ export default function PropertiesPage() {
           onClose={() => setIsViewModalOpen(false)}
           initialData={selectedProperty}
           onSubmit={() => setIsViewModalOpen(false)}
+          isViewOnly={true}
         />
       )}
+
+      {/* Delete Property Dialog */}
+      <DeleteConfirmationDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => {
+          setIsDeleteDialogOpen(false);
+          setSelectedProperty(null);
+        }}
+        onConfirm={handleDeleteConfirm}
+        title="Are you sure you want to delete this property?"
+        description={`This action cannot be undone. This will permanently delete the property "${selectedProperty?.name}" and all associated data.`}
+        itemName={selectedProperty?.name}
+        requireNameConfirmation={true}
+      />
     </div>
   );
 }
